@@ -1,0 +1,15 @@
+name: distgen-impact-cu-inj-ex
+channels:
+  - conda-forge
+dependencies:
+  - Python=3.9
+  - lume-model=0.13
+  - numpy
+  - prefect[kubernetes]
+  - scikit-image
+  - lume-impact
+  - distgen
+  - pandas
+  - pip
+  - pip:
+    - git+https://github.com/jacquelinegarrahan/distgen-impact-cu-inj-ex.git
