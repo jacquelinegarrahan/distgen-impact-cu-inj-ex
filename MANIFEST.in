@@ -1,2 +1,3 @@
 include versioneer.py
 include distgen_impact_cu_inj_ex/_version.py
+include distgen_impact_cu_inj_ex/files
