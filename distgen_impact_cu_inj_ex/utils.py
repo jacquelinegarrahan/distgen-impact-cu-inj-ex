@@ -62,10 +62,7 @@ def isolate_image(img, fclip=0.08):
     # 
     ixnonzero0 = np.nonzero(np.sum(img2, axis=1))[0]
     ixnonzero1 = np.nonzero(np.sum(img2, axis=0))[0]
-
-    print(ixnonzero0)
-    print(ixnonzero1)
-    
+ 
     i0, i1, j0, j1 = ixnonzero0[0], ixnonzero0[-1], ixnonzero1[0], ixnonzero1[-1]
     cutimg = img[i0:i1,j0:j1]
     

@@ -1,8 +1,9 @@
 from lume_model.models import SurrogateModel
-from impact import evaluate_impact_with_distgen
+from impact import Impact
 from impact.tools import isotime
-from impact.evaluate import  default_impact_merit
-#import matplotlib.pyplot as plt
+from impact.evaluate import default_impact_merit
+
+# import matplotlib.pyplot as plt
 import numpy as np
 import json
 import pandas as pd
@@ -14,235 +15,156 @@ import sys
 from pkg_resources import resource_filename
 import numpy as np
 from distgen import Generator
-
-
-CU_INJ_IMPACT_FILE = resource_filename(
-    "distgen_impact_cu_inj_ex.files", "cu_inj_impact.csv"
-)
+from distgen_impact_cu_inj_ex import VARIABLE_FILE
+from lume_model.utils import variables_from_yaml
+from distgen_impact_cu_inj_ex import CU_INJ_MAPPING_TABLE
 
 # Gets or creates a logger
-logger = logging.getLogger(__name__)  
+logger = logging.getLogger(__name__)
+
 
 class ImpactModel(SurrogateModel):
     # move configuration file parsing into utility
-    def __init__(self, *, configuration, input_variables, output_variables):
+    def __init__(
+        self,
+        impact_config,
+        model_name,
+        timeout,
+        header_nx,
+        header_ny,
+        header_nz,
+        stop,
+        numprocs,
+        mpi_run,
+        workdir,
+        command,
+        command_mpi,
+        use_mpi
+    ):
+        with open(VARIABLE_FILE, "r") as f:
+            self.input_variables, self.output_variables = variables_from_yaml(f)
 
-        self.input_variables = input_variables
-        self.output_variables = output_variables
-
-        self._configuration = configuration
-        self._model_name = configuration["impact"].get("model")
-        self._pv_mapping = pd.read_csv(CU_INJ_MAPPING)
-
-        self._pv_mapping.set_index("impact_name")
+        self._model_name = model_name
+        self._mapping_table = CU_INJ_MAPPING_TABLE
+        self._mapping_table.set_index("impact_name")
 
         self._settings = {
-            'distgen:n_particle': self._configuration["distgen"].get('distgen:n_particle'),   
-            'timeout': self._configuration["impact"].get('timeout'),
-            'header:Nx': self._configuration["impact"].get('header:Nx'),
-            'header:Ny': self._configuration["impact"].get('header:Ny'),
-            'header:Nz': self._configuration["impact"].get('header:Nz'),
-            'stop': self._configuration["impact"].get('stop'),
-            'numprocs': self._configuration["machine"].get('num_procs'),
-            'mpi_run': self._configuration["machine"].get('mpi_run_cmd'),
-            'workdir': self._configuration["machine"].get('workdir'),
-            'command': self._configuration["machine"].get('command'),
-            'command_mpi': self._configuration["machine"].get('command_mpi'),
-            'distgen:t_dist:length:value': self._configuration["distgen"].get('distgen:t_dist:length:value'),
+            "timeout": timeout,
+            "header:Nx": header_nx,
+            "header:Ny": header_ny,
+            "header:Nz": header_nz,
+            "stop": stop,
+            "numprocs": numprocs,
+            "mpi_run": mpi_run,
+            "workdir": workdir,
+            "command": command,
+            "command_mpi": command_mpi,
         }
 
-        # Update settings with impact factor
-        self._settings.update(dict(zip(self._pv_mapping['impact_name'], self._pv_mapping['impact_factor'])))
 
-        self._archive_dir = self._configuration["machine"].get("archive_dir")
-        self._plot_dir = self._configuration["machine"].get("plot_output_dir")
-        self._summary_dir = self._configuration["machine"].get("summary_output_dir")
-        self._distgen_laser_file = self._configuration["distgen"].get("distgen_laser_file")
-        self._distgen_input_file = self._configuration["distgen"].get("distgen_input_file")
+        mappings = dict(
+            zip(self._mapping_table["impact_name"], self._mapping_table["impact_factor"])
+        )
+
+        for key, val in mappings.items():
+            if "distgen" not in key:
+                self._settings[key] = val
+
+        impact_config["use_mpi"] = use_mpi
+        impact_config["workdir"] = workdir
+
         self._impact_config = impact_config
-        self._workdir = self._configuration["machine"].get('workdir')
 
+        self._I = Impact(**self._impact_config)
 
-        # kind of odd workaround
-        with open(self._configuration["machine"].get('config_file'), "r") as stream:
-            try:
-                impact_config = yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                print(exc)
-
-        impact_config['use_mpi'] = self._configuration["machine"].get('use_mpi')
-        impact_config['workdir'] = self._configuration["machine"].get('workdir')
-        
-    
-        self._dashboard_kwargs = self._configuration.get("dashboard")
-
-
-"""
     def evaluate(self, input_variables, particles, gen_input):
-        if settings:
-            for key in settings:
-                val = settings[key]
-                if key.startswith('distgen:'):
-                    key = key[len('distgen:'):]
-                    if verbose:
-                        print(f'Setting distgen {key} = {val}')
-                    G[key] = val
-                else:
-                # Assume impact
-                    if verbose:
-                        print(f'Setting impact {key} = {val}')          
-                    I[key] = val                
-        
+
+        for key, val in self._settings.items():
+            val = self._settings[key]
+            self._I[key] = val
+
         # Attach particles
-        I.initial_particles = particles
-        
-        # Attach distgen input. This is non-standard. 
-        I.distgen_input = gen_input
-        
-        I.run()
+        self._I.initial_particles = particles
 
-        output = default_impact_merit(I)
-        print(output)
+        # Attach distgen input. This is non-standard.
+        self._I.distgen_input = gen_input
 
-        # feels like this should be separate task...
-        archive_impact_with_distgen(I, G, archive_file=archive_file)   
-
-
-        return I
-
-
-
-
-
-
-
-
-        I = run_impact_with_distgen(settings=self._settings, 
-                            distgen_input_file=self._distgen_input_file,
-                            impact_config=self._impact_config,
-                            workdir=self._workdir,
-                            verbose=verbose)
-            
-        if merit_f:
-            output = merit_f(I)
-        else:
-            output = default_impact_merit(I)
-        
-        if 'error' in output and output['error']:
-            
-            raise ValueError('run_impact_with_distgen returned error in output')
-
-        #Recreate Generator object for fingerprint, proper archiving
-        # TODO: make this cleaner
-        G = Generator()
-        G.input = I.distgen_input
-        
-        fingerprint = fingerprint_impact_with_distgen(I, G)
-        output['fingerprint'] = fingerprint
-        
-        if archive_path:
-            path = tools.full_path(archive_path)
-            assert os.path.exists(path), f'archive path does not exist: {path}'
-            archive_file = os.path.join(path, fingerprint+'.h5')
-            output['archive'] = archive_file
-            
-            # Call the composite archive method
-            archive_impact_with_distgen(I, G, archive_file=archive_file)   
-            
-        return output    
-
-
-
-
-
-
-
-
-
-        self._settings['distgen:xy_dist:file'] = distgen_laser_file
-
+        # prepare
         itime = isotime()
         input_variables = {input_var.name: input_var for input_var in input_variables}
 
-        # convert IMAGE vars 
+        # convert IMAGE vars
         if input_variables["vcc_array"].value.ptp() < 128:
-            downcast = input_variables["vcc_array"].value.astype(np.int8) 
+            downcast = input_variables["vcc_array"].value.astype(np.int8)
             input_variables["vcc_array"].value = downcast
 
         if input_variables["vcc_array"].value.ptp() == 0:
-            raise ValueError(f'vcc_array has zero extent')
+            raise ValueError(f"vcc_array has zero extent")
 
         # scale values by impact factor
         vals = {}
         for var in input_variables.values():
-            if var.name in self._pv_mapping["impact_name"]:
-                vals[var.name] = var.value * self._pv_mapping.loc[self._pv_mapping["impact_name"] == var.name, "impact_factor"].item()
+            if var.name in self._mapping_table["impact_name"]:
+                vals[var.name] = (
+                    var.value
+                    * self._mapping_table.loc[
+                        self._mapping_table["impact_name"] == var.name, "impact_factor"
+                    ].item()
+                )
 
-        df = self._pv_mapping.copy()
-        df['pv_value'] = [input_variables[k].value for k in input_variables if "vcc_" not in k]
+        df = self._mapping_table.copy()
+        df["pv_value"] = [
+            input_variables[k].value for k in input_variables if "vcc_" not in k
+        ]
 
+        dat = {
+            "isotime": itime,
+            "inputs": self._settings,
+            "config": self._impact_config,
+            "pv_mapping_dataframe": df.to_dict(),
+        }
 
-        dat = {'isotime': itime, 
-            'inputs': self._settings, 'config': self._impact_config, 'pv_mapping_dataframe': df.to_dict()}
-
-
-        logger.info(f'Running evaluate_impact_with_distgen...')
+        logger.info(f"Running evaluate_impact_with_distgen...")
 
         t0 = time()
 
-        dat['outputs'] = evaluate_impact_with_distgen(self._settings,
-                                        #    merit_f=lambda x: run_merit(x, itime, self._dashboard_kwargs),
-                                            archive_path=self._archive_dir,
-                                            **self._impact_config,
-                                            verbose=False)
 
+        print("running impact")
+        self._I.run()
 
+        t1 = time()
 
-        def imact(particles, gen_input)
+       # if merit_f:
+       #     output = merit_f(I)
+       # else:
 
+      # output = default_impact_merit(self._I)
+        breakpoint()
 
-        I = Impact.from_yaml(impact_config)    
-    else:
-        I = Impact(**impact_config)
+        dat["outputs"] = outputs
 
-    if workdir:
-        I.workdir = workdir
-        I.configure() # again
-        
-    I.verbose=verbose
-    
-    if settings:
-        for key in settings:
-            val = settings[key]
-            if not key.startswith('distgen:'):
-
-                if verbose:
-                    print(f'Setting impact {key} = {val}')          
-                I[key] = val                
-    
-    # Attach particles
-    I.initial_particles = particles
-    
-    # Attach distgen input. This is non-standard. 
-    I.distgen_input = gen_input
-    
-    I.run()
-
-
-        logger.info(f'...finished in {(time()-t0)/60:.1f} min')
-
-        for var_name in dat['outputs']:
+        for var_name in dat["outputs"]:
             if var_name in self.output_variables:
-                self.output_variables[var_name].value = dat['outputs'][var_name]
+                self.output_variables[var_name].value = dat["outputs"][var_name]
 
         self.output_variables["isotime"].value = dat["isotime"]
 
-        # write summary file
-        fname = fname=f"{self._summary_dir}/{self._model_name}-{dat['isotime']}.json"
-        json.dump(dat, open(fname, 'w'))
-        logger.info(f'Output written: {fname}')
+        self._dat = dat
 
         return list(self.output_variables.values())
+
+    def get_impact_obj(self):
+        return self._I
+
+    def get_dat(self):
+        return self._dat
+
+
+""""
+
+
+
+
 
     @staticmethod
     def _run_merit():
