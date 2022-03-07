@@ -7,6 +7,9 @@ from distgen import Generator
 from prefect.run_configs import KubernetesRun
 from distgen_impact_cu_inj_ex import CU_INJ_MAPPING_TABLE
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
+
 @task
 def run_distgen(
     vcc_array,
@@ -74,7 +77,23 @@ def load_impact_config(impact_config_filename):
   #      self._summary_dir = self._configuration["machine"].get("summary_output_dir")
 
 @task
-def run_impact(G, gen_input):
+def run_impact(G, 
+        impact_config,
+        model_name,
+        timeout,
+        header_nx,
+        header_ny,
+        header_nz,
+        stop,
+        numprocs,
+        mpi_run,
+        workdir,
+        command,
+        command_mpi,
+        use_mpi
+    ):
+
+    model = ImpactModel(...)
     print(G)
     #    ...
 
@@ -104,10 +123,10 @@ def archive(G, I, output):
 
 # save summary file
 """
-        # write summary file
-       # fname = fname = f"{self._summary_dir}/{self._model_name}-{dat['isotime']}.json"
-        #json.dump(dat, open(fname, "w"))
-        #logger.info(f"Output written: {fname}")
+# write summary file
+# fname = fname = f"{self._summary_dir}/{self._model_name}-{dat['isotime']}.json"
+#json.dump(dat, open(fname, "w"))
+#logger.info(f"Output written: {fname}")
 
 """
 
@@ -119,7 +138,7 @@ docker_storage = Docker(
     image_name="distgen-impact-cu-inj-ex",
     image_tag="latest",
     # path=os.path.dirname(__file__),
-    # build_kwargs = {"nocache": True},
+    build_kwargs = {"nocache": True},
     dockerfile="Dockerfile",
     stored_as_script=True,
     path=f"/opt/prefect/flow.py",
@@ -168,8 +187,6 @@ if __name__ == "__main__":
         except yaml.YAMLError as exc:
             print(exc)
 
-
-    print(yaml_stream)
 
 
     flow.run_config = KubernetesRun(image="jgarrahan/distgen-impact-cu-inj-ex", image_pull_policy="Always", job_template=yaml_stream)

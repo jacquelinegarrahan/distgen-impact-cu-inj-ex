@@ -8,5 +8,6 @@ VARIABLE_FILE =resource_filename(
 CU_INJ_MAPPING = resource_filename(
     "distgen_impact_cu_inj_ex.files", "cu_inj_impact.csv"
 )
+
 CU_INJ_MAPPING_TABLE= pd.read_csv(CU_INJ_MAPPING)
 CU_INJ_MAPPING_TABLE.set_index("impact_name")

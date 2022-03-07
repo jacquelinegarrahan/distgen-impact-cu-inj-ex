@@ -77,17 +77,17 @@ class ImpactModel(SurrogateModel):
 
         self._I = Impact(**self._impact_config)
 
-    def evaluate(self, input_variables, particles, gen_input):
+    def evaluate(self, input_variables, particles, gen_input, debug=False):
+
+        self._I = Impact(**self._impact_config, initial_particles=particles)
 
         for key, val in self._settings.items():
             val = self._settings[key]
             self._I[key] = val
 
-        # Attach particles
-        self._I.initial_particles = particles
+        if debug:
+            self._I.total_charge = 0
 
-        # Attach distgen input. This is non-standard.
-        self._I.distgen_input = gen_input
 
         # prepare
         itime = isotime()
@@ -104,25 +104,22 @@ class ImpactModel(SurrogateModel):
         # scale values by impact factor
         vals = {}
         for var in input_variables.values():
-            if var.name in self._mapping_table["impact_name"]:
-                vals[var.name] = (
-                    var.value
-                    * self._mapping_table.loc[
+            if self._mapping_table["impact_name"].str.contains(var.name, regex=False).any():
+                val = var.value * self._mapping_table.loc[
                         self._mapping_table["impact_name"] == var.name, "impact_factor"
                     ].item()
-                )
 
+                vals[var.name] = val
+                if not "distgen" in var.name:
+                    self._I[var.name] = val
+
+
+        # create dat
         df = self._mapping_table.copy()
         df["pv_value"] = [
             input_variables[k].value for k in input_variables if "vcc_" not in k
         ]
-
-        dat = {
-            "isotime": itime,
-            "inputs": self._settings,
-            "config": self._impact_config,
-            "pv_mapping_dataframe": df.to_dict(),
-        }
+        df["impact_value"] = vals.values()
 
         logger.info(f"Running evaluate_impact_with_distgen...")
 
@@ -132,9 +129,18 @@ class ImpactModel(SurrogateModel):
 
         t1 = time()
 
+        if not self._I.output.get("final_particles") and not self._I.output['run_info']['error']:
+            logger.error("Beam loss in simulation likely preventing output.")
+
         outputs = default_impact_merit(self._I)
 
-        dat["outputs"] = outputs
+        dat = {
+            "isotime": itime,
+            "inputs": self._settings,
+            "config": self._impact_config,
+            "pv_mapping_dataframe": df.to_dict(),
+            "outputs": outputs
+        }
 
         for var_name in dat["outputs"]:
             if var_name in self.output_variables:
@@ -146,9 +152,32 @@ class ImpactModel(SurrogateModel):
 
         return list(self.output_variables.values())
 
-    def get_impact_obj(self):
+    def get_impact_objs(self):
         return self._I
 
     def get_dat(self):
         return self._dat
+
+    @classmethod
+    def from_archive(self, archive_file):
+        I2 = Impact(verbose=False)
+        I2.load_archive(afile)
+
+
+     #   impact_config,
+     #   model_name,
+     #   timeout,
+     #   header_nx,
+     #   header_ny,
+     #   header_nz,
+     #   stop,
+     #   numprocs,
+     #   mpi_run,
+     #   workdir,
+     #   command,
+     #   command_mpi,
+     #   use_mpi
+
+
+
 

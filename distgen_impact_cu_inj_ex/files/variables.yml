@@ -18,25 +18,25 @@ input_variables:
   L0A_phase:dtheta0_deg:
     type: scalar
     default: 0
-    range: [0, 0]
+    range: [-20, 0]
 
   L0B_phase:dtheta0_deg:
     name: L0B_phase:dtheta0_deg
     type: scalar
     default: 0
-    range: [0, 0]
+    range: [-20, 0]
 
   L0A_scale:voltage:
     name: L0A_scale:voltage
     type: scalar
     default: 0
-    range: [0, 0]
+    range: [0, 110]
 
   L0B_scale:voltage:
     name: L0B_scale:voltage
     type: scalar
     default: 0
-    range: [0, 0]
+    range: [0, 110]
 
   QA01:b1_gradient: 
     name: QA01:b1_gradient
@@ -303,18 +303,3 @@ output_variables:
   end_norm_emit_4d:
     name: end_norm_emit_4d
     type: scalar
-  
-  isotime:
-    name: isotime
-    type: array
-    value_type: string
-
-  fingerprint:
-    name: fingerprint
-    type: array
-    value_type: string
-
-  archive:
-    name: archive
-    type: array
-    value_type: string
