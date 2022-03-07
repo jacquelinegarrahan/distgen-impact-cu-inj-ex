@@ -81,6 +81,7 @@ class ImpactModel(SurrogateModel):
 
         self._I = Impact(**self._impact_config, initial_particles=particles)
 
+        # THIS ASSIGNMENT IS SUPER WEIRD.. SHOULD BE ABLE TO INITIALIZE IMPACT OBJECT WITH SETTINGS
         for key, val in self._settings.items():
             val = self._settings[key]
             self._I[key] = val
