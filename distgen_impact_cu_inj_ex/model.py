@@ -128,18 +128,11 @@ class ImpactModel(SurrogateModel):
 
         t0 = time()
 
-
-        print("running impact")
         self._I.run()
 
         t1 = time()
 
-       # if merit_f:
-       #     output = merit_f(I)
-       # else:
-
-      # output = default_impact_merit(self._I)
-        breakpoint()
+        outputs = default_impact_merit(self._I)
 
         dat["outputs"] = outputs
 
@@ -159,57 +152,3 @@ class ImpactModel(SurrogateModel):
     def get_dat(self):
         return self._dat
 
-
-""""
-
-
-
-
-
-    @staticmethod
-    def _run_merit():
-        ...
-
-    @staticmethod
-    def archive_model(filename):
-
-
-
-
-... 
-    def archive(self, h5=None):
-
-        if not h5:
-            h5 = 'impact_'+self.fingerprint()+'.h5'
-
-
-        archive_run(h5, self.inital_particles, self.input, self.output, self._units, self.group)
-
-
-
-
-def archive_run(h5, initial_particles, impact_input, impact_output, units, group):
-    if isinstance(h5, str):
-        fname = os.path.expandvars(h5)
-        g = h5py.File(fname, 'w')
-    else:
-        g = h5
-
-
-    # Write basic attributes
-    archive.impact_init(g)
-
-    # NEED TO CHANGE THIS HANDLING ALSO
-    if initial_particles:
-        initial_particles.write(g, name='initial_particles')
-
-     # All input
-    archive.write_input_h5(g, impact_input, name='input')
-
-    # All output
-    archive.write_output_h5(g, impact_output, name='output', units=units)
-
-    # Control groups
-    if group:
-            archive.write_control_groups_h5(g, group, name='control_groups')
-"""
