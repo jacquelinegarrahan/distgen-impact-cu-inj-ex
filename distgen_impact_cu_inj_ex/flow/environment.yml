@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - Python=3.9
-  - lume-model=0.13
   - numpy
   - prefect[kubernetes]
   - scikit-image
@@ -13,3 +12,4 @@ dependencies:
   - pip
   - pip:
     - git+https://github.com/jacquelinegarrahan/distgen-impact-cu-inj-ex.git
+    - git+https://github.com/slaclab/lume-model.git

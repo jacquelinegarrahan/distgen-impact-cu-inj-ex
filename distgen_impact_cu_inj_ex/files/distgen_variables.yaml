@@ -1,7 +1,7 @@
 input_variables:  
   vcc_array:
     type: array
-    default: /Users/jgarra/sandbox/distgen-impact-cu-inj-ex/distgen_impact_cu_inj_ex/files/default_vcc_array.npy
+    default: [0,0]
 
   vcc_size_x:
     type: scalar

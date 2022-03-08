@@ -10,6 +10,11 @@ DISTGEN_VARIABLE_FILE =resource_filename(
     "distgen_impact_cu_inj_ex.files", "distgen_variables.yaml"
 )
 
+DEFAULT_VCC_ARRAY =resource_filename(
+    "distgen_impact_cu_inj_ex.files", "default_vcc_array.npy"
+)
+
+
 
 
 CU_INJ_MAPPING = resource_filename(
@@ -26,3 +31,6 @@ with open(IMPACT_VARIABLE_FILE, "r") as f:
 
 with open(DISTGEN_VARIABLE_FILE, "r") as f:
     DISTGEN_INPUT_VARIABLES, DISTGEN_OUTPUT_VARIABLES = variables_from_yaml(f)
+
+
+DISTGEN_INPUT_VARIABLES.default = DEFAULT_VCC_ARRAY
