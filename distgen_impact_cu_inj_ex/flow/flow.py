@@ -77,7 +77,7 @@ def format_epics_input(pv_values, pvname_to_input_map):
         var_name = pvname_to_input
 
         # downcast
-        if var_name = "vcc_array":
+        if var_name == "vcc_array":
             value = value.astype(np.int8)
 
             if value.ptp() == 0:
