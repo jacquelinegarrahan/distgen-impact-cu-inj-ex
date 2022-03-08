@@ -1,4 +1,4 @@
-input_file: distgen_impact_cu_inj_ex/files/lcls_injector/ImpactT.in
+input_file: ImpactT.in
 
 group:
   GUN_phase:
