@@ -16,10 +16,26 @@ import sys
 from pkg_resources import resource_filename
 import numpy as np
 from distgen import Generator
-from distgen_impact_cu_inj_ex import MODEL_INPUT_VARIABLES, MODEL_OUTPUT_VARIABLES, CU_INJ_MAPPING_TABLE
+from distgen_impact_cu_inj_ex import IMPACT_INPUT_VARIABLES, IMPACT_OUTPUT_VARIABLES, CU_INJ_MAPPING_TABLE
 
 # Gets or creates a logger
 logger = logging.getLogger(__name__)
+
+
+
+class DistgenModel(SurrogateModel):
+
+    def __init__(self, *, input_file, base_settings:dict={}):
+        ...
+
+
+
+    def evaluate():
+        ...
+
+
+
+
 
 
 
@@ -37,30 +53,15 @@ class ImpactConfiguration(BaseSettings):
 class ImpactModel(SurrogateModel):
     # move configuration file parsing into utility
 
-    input_variables = MODEL_INPUT_VARIABLES
-    output_variables = MODEL_OUTPUT_VARIABLES
+    input_variables = IMPACT_INPUT_VARIABLES
+    output_variables = IMPACT_OUTPUT_VARIABLES
 
     def __init__(
-        self, *, archive_file: str,configuration: ImpactConfiguration, base_settings:dict={},
+        self, *, archive_file: str, configuration: ImpactConfiguration, base_settings:dict={},
     ):
         self._archive_file = archive_file
         self._configuration = configuration
-
-
         self._settings = base_settings
-        
-        """
-        {
-            "header:Nx": header_nx,
-            "header:Ny": header_ny,
-            "header:Nz": header_nz,
-            "stop": stop,
-            "numprocs": numprocs,
-        }
-        """
-
-       # for key, val in mappings.items():
-        #    self._settings[key] = val
 
         self._I = Impact(verbose=False)
         self._I.load_archive(archive_file)

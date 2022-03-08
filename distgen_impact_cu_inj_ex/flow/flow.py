@@ -5,72 +5,14 @@ from prefect import Flow, task, Parameter
 from prefect.storage import Docker
 from distgen import Generator
 from prefect.run_configs import KubernetesRun
-from distgen_impact_cu_inj_ex import CU_INJ_MAPPING_TABLE, MODEL_INPUT_VARIABLES, MODEL_OUTPUT_VARIABLES
+from distgen_impact_cu_inj_ex import CU_INJ_MAPPING_TABLE, IMPACT_INPUT_VARIABLES, IMPACT_OUTPUT_VARIABLES, DISTGEN_INPUT_VARIABLES, DISTGEN_OUTPUT_VARIABLES
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+
 
 
 @task
-def run_distgen(
-    vcc_array,
-    vcc_size_y,
-    vcc_size_x,
-    vcc_resolution,
-    vcc_resolution_units,
-    distgen_input_filename,
-    distgen_settings
-
-):
-
-    # Initialize distgen
-    vcc_array = np.array(vcc_array)
-    image = vcc_array.reshape(vcc_size_y, vcc_size_x)
-
-    # make units consistent
-    if vcc_resolution_units == "um/px":
-        vcc_resolution_units = "um"
-
-    cutimg = isolate_image(image, fclip=0.08)
-    assert cutimg.ptp() > 0
-
-    write_distgen_xy_dist(
-        output_filename, cutimg, vcc_resolution, resolution_units=vcc_resolution_units
-    )
-
-    # Run generator
-    G = Generator(input_filename)
-
-    for setting, val in distgen_settings:
-        G[setting] = val
-
-    mappings = dict(
-        zip(CU_INJ_MAPPING_TABLE["impact_name"], CU_INJ_MAPPING_TABLE["impact_factor"])
-    )
-
-    for key, val in mappings.items():
-        if "distgen" in key:
-            self._settings[key] = val
-
-
-    G.verbose = True
-    
-    G.run()
-
-    return G
-
-
-
-def format_epics_input(pv_values, pvname_to_input_map):
-    input_variables = MODEL_INPUT_VARIABLES
-
-
-    if input_variables["vcc_array"].value.ptp() < 128:
-        downcast = input_variables["vcc_array"].value.astype(np.int8)
-        input_variables["vcc_array"].value = downcast
-
-    if input_variables["vcc_array"].value.ptp() == 0:
-        raise ValueError(f"vcc_array has zero extent")
-
+def format_distgen_epics_input(distgen_pv_values, distgen_pvname_to_input_map):
+    input_variables = DISTGEN_INPUT_VARIABLES
 
     # scale all values w.r.t. impact factor
     for pv_name, value in pv_values.items():
@@ -78,6 +20,7 @@ def format_epics_input(pv_values, pvname_to_input_map):
 
         # downcast
         if var_name == "vcc_array":
+            value = np.array(value)
             value = value.astype(np.int8)
 
             if value.ptp() == 0:
@@ -91,19 +34,79 @@ def format_epics_input(pv_values, pvname_to_input_map):
             input_variables[var_name].value = scaled_val
 
 
+    return distgen_input_variables
+
+
+
+@task
+def run_distgen(
+    vcc_array,
+    vcc_size_y,
+    vcc_size_x,
+    vcc_resolution,
+    vcc_resolution_units,
+    distgen_input_filename,
+    distgen_settings,
+    distgen_output_filename
+):
+
+    # Initialize distgen
+    vcc_array = distgen_input_variables["vcc_array"].value
+    image = vcc_array.reshape(vcc_size_y, vcc_size_x)
+
+    # make units consistent
+    if vcc_resolution_units == "um/px":
+        vcc_resolution_units = "um"
+
+    cutimg = isolate_image(image, fclip=0.08)
+    assert cutimg.ptp() > 0
+
+    write_distgen_xy_dist(
+        distgen_output_filename, cutimg, vcc_resolution, resolution_units=vcc_resolution_units
+    )
+
+    # Run generator
+    G = Generator(input_filename)
+
+    G["t_dist:file"] = distgen_output_filename
+
+    for setting, val in distgen_settings:
+        G[setting] = val
+
+    G.verbose = True
+    
+    G.run()
+
+    return G
+
+
+@task
+def format_impact_epics_input(impact_pv_values, impact_pvname_to_input_map):
+    input_variables = IMPACT_INPUT_VARIABLES
+
+    # scale all values w.r.t. impact factor
+    for pv_name, value in pv_values.items():
+        var_name = pvname_to_input
+
+        if CU_INJ_MAPPING_TABLE["impact_name"].str.contains(var_name, regex=False).any():
+            scaled_val = value * CU_INJ_MAPPING_TABLE.loc[
+                    CU_INJ_MAPPING_TABLE["impact_name"] == var_name, "impact_factor"
+                ].item()
+
+            input_variables[var_name].value = scaled_val
+
     return input_variables
 
 
 
 @task
-def run_impact(G, archive_file, impact)impact_configuration: dict, impact_base_settings: dict, input_variables):
-
+def run_impact(G, archive_file, impact_configuration: dict, impact_base_settings: dict, input_variables):
     impact_configuration = ImpactConfiguration(
         **impact_configuration
     )
 
     model = ImpactModel(archive_file=archive_file, configuration=impact_configuration, base_settings=base_settings)
-    output_variables = model.evaulate(list(input_variables.values))
+    output_variables = model.evaulate(list(input_variables.values), g.particles)
 
     return model, output_variables
 
@@ -192,11 +195,12 @@ with Flow(
     vcc_resolution = Parameter("vcc_resolution")
     vcc_resolution_units = Parameter("vcc_resolution_units")
     distgen_input_filename = Parameter("distgen_input_filename")
+    distgen_output_filename = Parameter("distgen_output_filename")
     distgen_settings = Parameter("distgen_settings")
     impact_configuration = Parameter("impact_configuration")
     impact_base_settings = Parameter("base_settings")
-    pv_values = Parameter("pvname_values")
-    pvname_to_input_map = Parameter("pvname_to_input_map")
+    impact_pv_values = Parameter("impact_pv_values")
+    impact_pvname_to_input_map = Parameter("impact_pvname_to_input_map")
     impact_archive_file = Parameter("archive_file")
 
     g = run_distgen(
@@ -205,18 +209,13 @@ with Flow(
         vcc_size_x,
         vcc_resolution,
         vcc_resolution_units,
-        input_filename,
-        output_filename,
-        t_dist_len_value,
-        n_particles
+        distgen_input_filename,
+        distgen_settings,
+        distgen_output_filename
     )
-
-    input_variables = format_epics_input(pv_values, pvname_to_input_map)
-    run_impact(g, archive_file, impact_configuration, input_variables)
-
-
-
-
+    
+    input_variables = format_impact_epics_input(impact_pv_values, impact_pvname_to_input_map)
+    run_impact(g, impact_archive_file, impact_configuration, impact_base_settings, input_variables)
 
 
 

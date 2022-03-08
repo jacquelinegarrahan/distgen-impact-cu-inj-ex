@@ -1,0 +1,23 @@
+input_variables:  
+  vcc_array:
+    type: array
+    default: /Users/jgarra/sandbox/distgen-impact-cu-inj-ex/distgen_impact_cu_inj_ex/files/default_vcc_array.npy
+
+  vcc_size_x:
+    type: scalar
+    default: 640
+    range: [640, 640]
+  
+  vcc_size_y:
+    type: scalar
+    default: 480
+    range: [480, 480]
+  
+  vcc_resolution:
+    type: scalar
+    default: 9
+    range: [9,9]
+
+output_variables:
+  success: 
+    type: scalar
