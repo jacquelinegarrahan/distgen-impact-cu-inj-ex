@@ -36,16 +36,11 @@ class DistgenModel(SurrogateModel):
 
 
 
-
-
-
-
 # .yaml low-level configs
 class ImpactConfiguration(BaseSettings):
     command: str
     command_mpi: str
     use_mpi: str
-    numprocs: str
     workdir: str
     mpi_run: str
 
@@ -60,15 +55,16 @@ class ImpactModel(SurrogateModel):
         self, *, archive_file: str, configuration: ImpactConfiguration, base_settings:dict={},
     ):
         self._archive_file = archive_file
-        self._configuration = configuration
+        self._configuration = configuration.dict()
         self._settings = base_settings
 
-        self._I = Impact(verbose=False)
+        self._I = Impact(**self._configuration, verbose=False)
         self._I.load_archive(archive_file)
 
         # Assign basic settings
         for key, val in self._settings.items():
             val = self._settings[key]
+            print(f"Setting {key}")
             self._I[key] = val
 
 
@@ -101,11 +97,7 @@ class ImpactModel(SurrogateModel):
         # format output variables
         for var_name in outputs:
             if var_name in self.output_variables:
-                self.output_variables[var_name].value = dat["outputs"][var_name]
-
-            else:
-                print("OUTPUT NOT IN")
-                print(var_name)
+                self.output_variables[var_name].value = outputs[var_name]
 
         self.output_variables["isotime"].value = t1-t0
 

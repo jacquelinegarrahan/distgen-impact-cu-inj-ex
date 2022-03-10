@@ -5,6 +5,7 @@ dependencies:
   - Python=3.9
   - numpy
   - prefect[kubernetes]
+  - lume-model
   - scikit-image
   - lume-impact
   - distgen
@@ -12,4 +13,3 @@ dependencies:
   - pip
   - pip:
     - git+https://github.com/jacquelinegarrahan/distgen-impact-cu-inj-ex.git
-    - git+https://github.com/slaclab/lume-model.git
