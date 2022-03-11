@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3 AS build
+FROM condaforge/mambaforge AS build
 
 # Create environment
 COPY ./environment.yml .

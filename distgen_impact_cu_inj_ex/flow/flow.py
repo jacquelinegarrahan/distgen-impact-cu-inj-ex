@@ -241,6 +241,12 @@ with Flow(
   #  summary_file = summarize_impact(impact_settings, impact_configuration, impact_pv_values, impact_output, pv_collection_isotime, impact_model_name, summary_dir)
 
 
+docker_storage.add_flow(flow)
+
+def get_flow():
+    return flow
+
+
 
 if __name__ == "__main__":
 
@@ -257,7 +263,7 @@ if __name__ == "__main__":
     flow_id = scheduler.register_flow(
         flow,
         "examples",
-        build=True,
+        build=False,
         mount_points=[mount_point],
         lume_configuration_file="/Users/jgarra/sandbox/lume-orchestration-demo/examples/distgen-impact-cu-inj/config.yaml",
     )
