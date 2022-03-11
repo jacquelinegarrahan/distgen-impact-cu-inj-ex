@@ -5,7 +5,7 @@ from skimage.segmentation import watershed
 from skimage.filters.rank import median
 from skimage.morphology import disk
 import os
-
+import pint
 
 def write_distgen_xy_dist(filename, image, resolution, resolution_units='m'):
     """
@@ -31,6 +31,42 @@ y {widths[0]} {center_y}  [{resolution_units}]"""
     return os.path.abspath(filename)
 
 
+
+def format_distgen_xy_dist(image, resolution, resolution_units):
+    """
+    Writes image data in distgen's xy_dist format
+    
+    Returns the absolute path to the file written
+    
+    """
+
+    ureg = pint.UnitRegistry()
+    
+    # Get width of each dimension
+    widths = resolution * np.array(image.shape)
+
+    
+    center_y = 0
+    center_x = 0
+
+    x_min = center_x - widths[1]/2
+    x_max = center_x + widths[1]/2
+    y_min = center_y - widths[1]/2
+    y_max = center_y + widths[1]/2
+    
+    image = image * ureg(resolution_units)
+
+    return {
+            'type' : 'image2d',
+            'min_x': {'value':x_min, 'units':'mm'},
+            'max_x': {'value':x_max, 'units':'mm'},
+            'min_y': {'value':y_min, 'units':'mm'},
+            'max_y': {'value':y_max, 'units':'mm'},
+            'P': image
+        }
+
+
+
 def isolate_image(img, fclip=0.08):
     """
     Uses a masking technique to isolate the VCC image
@@ -39,8 +75,6 @@ def isolate_image(img, fclip=0.08):
     
     # Clip lowest fclip fraction
     img[img < np.max(img)* fclip] = 0
-
-    print(img)
     
     # Filter out hot pixels to use as a mask
     # https://scikit-image.org/docs/0.12.x/auto_examples/xx_applications/plot_rank_filters.html

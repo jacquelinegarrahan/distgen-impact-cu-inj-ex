@@ -1,4 +1,4 @@
-n_particle: 100000
+n_particle: 1000000
 random_type: hammersley
 
 start:
@@ -11,21 +11,32 @@ total_charge:
   value: 250
   units: pC
     
-r_dist:
-  n_sigma_cutoff: 1.5
-  sigma_xy:
-    value: 0.37
-    units: mm
-  type: radial_gaussian
-
 t_dist:
   type: tukey
   length:
-    value: 6.6
+    value: 7.5
     units: ps    
   ratio:  
     value: 0.8
-    units: ''  
+    units: '' 
 
-  
+xy_dist:
+  type: file2d
+  file: laser.txt
+
+transforms:
+    order:
+        - tx
+        - ty
+    tx:
+        avg_x:
+            units: mm
+            value: 0
+        type: set_avg x
+    ty:
+        avg_y:
+            units: mm
+            value: 0
+        type: set_avg y    
+
 

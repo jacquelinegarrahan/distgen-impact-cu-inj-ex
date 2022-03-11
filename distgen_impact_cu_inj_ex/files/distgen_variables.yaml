@@ -1,4 +1,6 @@
 input_variables:  
+
+
   vcc_array:
     type: array
     default: [0,0]
@@ -20,8 +22,13 @@ input_variables:
   
   vcc_resolution_units:
     type: array
-    value_type: string
+    value_type: str
     default: "um"
+
+  total_charge:
+    type: scalar
+    default: 0
+    range: [0,inf]
 
 output_variables:
   x:

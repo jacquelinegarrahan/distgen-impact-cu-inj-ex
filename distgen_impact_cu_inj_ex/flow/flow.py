@@ -1,10 +1,12 @@
 from distgen_impact_cu_inj_ex.utils import write_distgen_xy_dist, isolate_image
-from distgen_impact_cu_inj_ex.model import ImpactModel, LUMEConfiguration
+from distgen_impact_cu_inj_ex.model import ImpactModel, DistgenModel, LUMEConfiguration
+from impact.impact_distgen import archive_impact_with_distgen
 import numpy as np
 from prefect import Flow, task, Parameter
 from prefect.storage import Docker
 from distgen import Generator
 from prefect.run_configs import KubernetesRun
+import os
 from distgen_impact_cu_inj_ex import (
     CU_INJ_MAPPING_TABLE,
     IMPACT_INPUT_VARIABLES,
@@ -35,68 +37,41 @@ def format_distgen_epics_input(distgen_pv_values, distgen_pvname_to_input_map):
             if value == "um/px":
                 value = "um"
 
-
-        if (
-            CU_INJ_MAPPING_TABLE["impact_name"]
-            .str.contains(var_name, regex=False)
-            .any()
-        ):
+        if var_name == "total_charge":
             scaled_val = (
                 value
                 * CU_INJ_MAPPING_TABLE.loc[
-                    CU_INJ_MAPPING_TABLE["impact_name"] == var_name, "impact_factor"
+                    CU_INJ_MAPPING_TABLE["impact_name"] == "distgen:total_charge:value", "impact_factor"
                 ].item()
             )
+            input_variables["total_charge"].value = scaled_val
 
-            input_variables[var_name].value = scaled_val
+        else:
+            input_variables[var_name].value = value
 
     return input_variables
 
 
 @task
 def run_distgen(
-    vcc_array,
-    vcc_size_y,
-    vcc_size_x,
-    vcc_resolution,
-    vcc_resolution_units,
+    distgen_configuration,
     distgen_input_filename,
     distgen_settings,
     distgen_output_filename,
+    distgen_input_variables,
 ):
 
-    # Initialize distgen
-    # vcc_array = distgen_input_variables["vcc_array"].value
-    vcc_array = np.array(vcc_array)
-    image = vcc_array.reshape(vcc_size_y, vcc_size_x)
-
-    # make units consistent
-    if vcc_resolution_units == "um/px":
-        vcc_resolution_units = "um"
-
-    cutimg = isolate_image(image, fclip=0.08)
-    assert cutimg.ptp() > 0
-
-    write_distgen_xy_dist(
-        distgen_output_filename,
-        cutimg,
-        vcc_resolution,
-        resolution_units=vcc_resolution_units,
+    configuration = LUMEConfiguration(**distgen_configuration)
+    distgen_model = DistgenModel(
+        input_file=distgen_input_filename,
+        configuration=configuration,
+        base_settings=distgen_settings,
+        distgen_output_filename=distgen_output_filename,
     )
 
-    # Run generator
-    G = Generator(distgen_input_filename)
+    output_variables = distgen_model.evaluate(distgen_input_variables)
 
-    G["t_dist:file"] = distgen_output_filename
-
-    for setting, val in distgen_settings.items():
-        G[setting] = val
-
-    G.verbose = True
-
-    G.run()
-
-    return G
+    return (distgen_model, output_variables)
 
 
 @task
@@ -126,72 +101,80 @@ def format_impact_epics_input(impact_pv_values, impact_pvname_to_input_map):
 
 @task
 def run_impact(
-    G,
-    archive_file,
+    impact_archive_file,
     impact_configuration: dict,
-    impact_base_settings: dict,
+    impact_settings: dict,
     input_variables,
+    distgen_output: tuple,
 ):
+    particles = distgen_output[0].get_particles()
     impact_configuration = LUMEConfiguration(**impact_configuration)
 
     model = ImpactModel(
-        archive_file=archive_file,
+        archive_file=impact_archive_file,
         configuration=impact_configuration,
-        base_settings=impact_base_settings,
+        base_settings=impact_settings,
     )
-    output_variables = model.evaluate(list(input_variables.values()), G.particles)
+    output_variables = model.evaluate(list(input_variables.values()), particles)
 
-    return model, output_variables
-
-
-"""
-def archive(G, I, output):
-    # get fingerprint
-    fingerprint = fingerprint_impact_with_distgen(I, G)
-    output['fingerprint'] = fingerprint
-        
-    if archive_path:
-        path = tools.full_path(archive_path)
-        assert os.path.exists(path), f'archive path does not exist: {path}'
-        archive_file = os.path.join(path, fingerprint+'.h5')
-        output['archive'] = archive_file
-        
-        # Call the composite archive method
-        archive_impact_with_distgen(I, G, archive_file=archive_file)   
-"""
+    return (model, output_variables)
 
 
-# save summary file
-"""
-# write summary file
-
-    # build variable mapping dataframe
-        # create dat
-        df = self._mapping_table.copy()
-        df["pv_value"] = [
-            input_variables[k].value for k in input_variables if "vcc_" not in k
-        ]
-        df["impact_value"] = vals.values()
-
-
-        dat = {
-            "isotime": itime,
-            "inputs": self._settings, 
-            "config": self._impact_config,
-            "pv_mapping_dataframe": df.to_dict(),
-            "outputs": outputs
-        }
-
-
-# fname = fname = f"{self._summary_dir}/{self._model_name}-{dat['isotime']}.json"
-#json.dump(dat, open(fname, "w"))
-#logger.info(f"Output written: {fname}")
-
-"""
-
-"""
 @task
-def write_results()
+def archive(distgen_output, impact_output, archive_dir, model_id, pv_collection_isotime):
+    # get fingerprint
+    distgen_model = distgen_output[0]
+    impact_model = impact_output[0]
+ #   fingerprint = fingerprint_impact_with_distgen(impact_model.I, distgen_model.G)
+
+    archive_file = os.path.join(archive_dir, f"{str(model_id)}_{pv_collection_isotime}.h5")
+
+    assert os.path.exists(archive_dir), f'archive dir does not exist: {archive_dir}'
+
+    archive_impact_with_distgen(impact_model.I, distgen_model.G, archive_file)
+
+    return archive_file    
+        
+
+"""
+# save summary file
+@task
+def summarize_impact(impact_settings, impact_configuration, impact_pv_values, impact_output, pv_collection_isotime, impact_model_name, summary_dir):
+    skipping for now and saving to db instead
+ 
+    df = CU_INJ_MAPPING_TABLE.copy()
+   # df["pv_value"] = 
+
+   # df["pv_value"] = [
+   #     input_variables[k].value for k in input_variables if "vcc_" not in k
+   # ]
+
+   # df["impact_value"] = [impact_output_variables[""]]
+    impact_output_variables = impact_output[1]
+
+    settings = {
+        var.name: var.value for var in impact_input_variables
+    }.update(impact_settings)
+
+    outputs = {}
+
+    for var in impact_output_variables:
+        outputs[var.name] =  var.value
+
+    dat = {
+        "isotime": pv_collection_isotime,
+        "inputs": settings, 
+        "config": impact_configuration,
+        # "pv_mapping_dataframe": df.to_dict(),
+        "outputs": outputs
+    }
+
+    fname = f"{summary_dir}/{impact_model_name}-{dat['isotime']}.json"
+
+    # fname = fname = f"{self._summary_dir}/{self._model_name}-{dat['isotime']}.json"
+    #json.dump(dat, open(fname, "w"))
+    #logger.info(f"Output written: {fname}")
+
 """
 
 
@@ -215,41 +198,48 @@ with Flow(
     ),
 ) as flow:
 
-    vcc_array = Parameter("vcc_array")
-    vcc_size_y = Parameter("vcc_size_y")
-    vcc_size_x = Parameter("vcc_size_x")
-    vcc_resolution = Parameter("vcc_resolution")
-    vcc_resolution_units = Parameter("vcc_resolution_units")
     distgen_input_filename = Parameter("distgen_input_filename")
     distgen_output_filename = Parameter("distgen_output_filename")
     distgen_settings = Parameter("distgen_settings")
+    distgen_configuration = Parameter("distgen_configuration")
+    distgen_pv_values = Parameter("distgen_pv_values")
+    distgen_pvname_to_input_map = Parameter("distgen_pvname_to_input_map")
     impact_configuration = Parameter("impact_configuration")
-    impact_base_settings = Parameter("impact_base_settings")
+    impact_settings = Parameter("impact_settings")
     impact_pv_values = Parameter("impact_pv_values")
     impact_pvname_to_input_map = Parameter("impact_pvname_to_input_map")
     impact_archive_file = Parameter("impact_archive_file")
+    archive_dir = Parameter("impact_archive_dir")
+    model_id = Parameter("model_id")
+  #  summary_dir = Parameter("impact_summary_dir")
+    pv_collection_isotime = Parameter("pv_collection_isotime")
 
-    g = run_distgen(
-        vcc_array,
-        vcc_size_y,
-        vcc_size_x,
-        vcc_resolution,
-        vcc_resolution_units,
+
+    distgen_input_variables = format_distgen_epics_input(distgen_pv_values, distgen_pvname_to_input_map)
+
+    distgen_output = run_distgen(
+        distgen_configuration,
         distgen_input_filename,
         distgen_settings,
         distgen_output_filename,
+        distgen_input_variables
     )
 
-    input_variables = format_impact_epics_input(
+    impact_input_variables = format_impact_epics_input(
         impact_pv_values, impact_pvname_to_input_map
     )
-    run_impact(
-        g,
+    impact_output = run_impact(
         impact_archive_file,
         impact_configuration,
-        impact_base_settings,
-        input_variables,
+        impact_settings,
+        impact_input_variables,
+        distgen_output
     )
+
+    archive_file = archive(distgen_output, impact_output, archive_dir, model_id, pv_collection_isotime)
+
+  #  summary_file = summarize_impact(impact_settings, impact_configuration, impact_pv_values, impact_output, pv_collection_isotime, impact_model_name, summary_dir)
+
 
 
 if __name__ == "__main__":
@@ -260,7 +250,15 @@ if __name__ == "__main__":
 
     scheduler = service_container.prefect_scheduler()
 
-    mount_point = MountPoint(name="fs-test", host_path="/Users/jgarra/sandbox", mount_type="Directory")
+    mount_point = MountPoint(
+        name="fs-test", host_path="/Users/jgarra/sandbox", mount_type="Directory"
+    )
 
-    flow_id = scheduler.register_flow(flow, "examples", build=True, mount_points=[mount_point], lume_configuration_file="/Users/jgarra/sandbox/lume-orchestration-demo/examples/distgen-impact-cu-inj/config.yaml")
+    flow_id = scheduler.register_flow(
+        flow,
+        "examples",
+        build=True,
+        mount_points=[mount_point],
+        lume_configuration_file="/Users/jgarra/sandbox/lume-orchestration-demo/examples/distgen-impact-cu-inj/config.yaml",
+    )
     print(flow_id)
