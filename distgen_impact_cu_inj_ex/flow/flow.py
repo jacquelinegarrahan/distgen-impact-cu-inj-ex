@@ -1,5 +1,5 @@
 from distgen_impact_cu_inj_ex.utils import write_distgen_xy_dist, isolate_image
-from distgen_impact_cu_inj_ex.model import ImpactModel, ImpactConfiguration
+from distgen_impact_cu_inj_ex.model import ImpactModel, LUMEConfiguration
 import numpy as np
 from prefect import Flow, task, Parameter
 from prefect.storage import Docker
@@ -29,6 +29,12 @@ def format_distgen_epics_input(distgen_pv_values, distgen_pvname_to_input_map):
 
             if value.ptp() == 0:
                 raise ValueError(f"EPICS get for vcc_array has zero extent")
+
+        # make units consistent
+        if var_name == "vcc_resolution_units":
+            if value == "um/px":
+                value = "um"
+
 
         if (
             CU_INJ_MAPPING_TABLE["impact_name"]
@@ -126,7 +132,7 @@ def run_impact(
     impact_base_settings: dict,
     input_variables,
 ):
-    impact_configuration = ImpactConfiguration(**impact_configuration)
+    impact_configuration = LUMEConfiguration(**impact_configuration)
 
     model = ImpactModel(
         archive_file=archive_file,

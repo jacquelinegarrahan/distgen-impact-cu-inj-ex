@@ -17,7 +17,40 @@ input_variables:
     type: scalar
     default: 9
     range: [9,9]
+  
+  vcc_resolution_units:
+    type: array
+    value_type: string
+    default: "um"
 
 output_variables:
-  success: 
-    type: scalar
+  x:
+    type: array
+
+  px:
+    type: array
+
+  y: 
+    type: array
+
+  py: 
+    type: array
+
+  z: 
+    type: array
+
+  pz: 
+    type: array
+
+  t:
+    type: array
+
+  status: 
+    type: array
+
+  weight: 
+    type: array
+
+  species:
+    type: array
+    value_type: str
