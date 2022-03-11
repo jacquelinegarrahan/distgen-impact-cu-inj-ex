@@ -1,10 +1,13 @@
 name: Publish flow docker image
 
 on:
-  release:
-    types: [published]
-    branches:
+  push:
+    branches: 
       - main
+ # release:
+ #   types: [published]
+ #   branches:
+ #     - main
 
 jobs:
   push_to_registry:
@@ -20,6 +23,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Copy environment file
+        run: |
+          cp environment.yml ./distgen_impact_cu_inj_ex/flow/environment.yml
 
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
