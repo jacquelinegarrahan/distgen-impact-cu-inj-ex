@@ -247,24 +247,3 @@ def get_flow():
     return flow
 
 
-
-if __name__ == "__main__":
-
-    import yaml
-    from slac_services.services.scheduling import MountPoint
-    from slac_services import service_container
-
-    scheduler = service_container.prefect_scheduler()
-
-    mount_point = MountPoint(
-        name="fs-test", host_path="/Users/jgarra/sandbox", mount_type="Directory"
-    )
-
-    flow_id = scheduler.register_flow(
-        flow,
-        "examples",
-        build=False,
-        mount_points=[mount_point],
-        lume_configuration_file="/Users/jgarra/sandbox/lume-orchestration-demo/examples/distgen-impact-cu-inj/config.yaml",
-    )
-    print(flow_id)
