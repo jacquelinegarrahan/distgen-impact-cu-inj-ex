@@ -1,13 +1,10 @@
 name: Publish flow docker image
 
 on:
-  push:
-    branches: 
+  release:
+    types: [published]
+    branches:
       - main
- # release:
- #   types: [published]
- #   branches:
- #     - main
 
 jobs:
   push_to_registry:
