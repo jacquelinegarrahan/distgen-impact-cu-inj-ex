@@ -17,13 +17,15 @@ from distgen_impact_cu_inj_ex import (
     CU_INJ_MAPPING_TABLE,
     IMPACT_INPUT_VARIABLES,
     DISTGEN_INPUT_VARIABLES,
+    DISTGEN_INPUT_FILE,
+    IMPACT_ARCHIVE_FILE
 )
 
 
 
 # DEFINE PARAMETERS GLOBALLY FOR USE IN DYNAMIC RESULT STORAGE STRINGS
-distgen_input_filename = Parameter("distgen_input_filename")
-distgen_output_filename = Parameter("distgen_output_filename")
+distgen_input_filename = Parameter("distgen_input_filename", default=DISTGEN_INPUT_FILE)
+distgen_output_filename = Parameter("distgen_output_filename", default="/tmp/laser.txt")
 distgen_settings = Parameter("distgen_settings")
 distgen_configuration = Parameter("distgen_configuration")
 distgen_pv_values = Parameter("distgen_pv_values")
@@ -32,7 +34,7 @@ impact_configuration = Parameter("impact_configuration")
 impact_settings = Parameter("impact_settings")
 impact_pv_values = Parameter("impact_pv_values")
 impact_pvname_to_input_map = Parameter("impact_pvname_to_input_map")
-impact_archive_file = Parameter("impact_archive_file")
+impact_archive_file = Parameter("impact_archive_file", default=IMPACT_ARCHIVE_FILE)
 archive_dir = Parameter("impact_archive_dir")
 #  summary_dir = Parameter("impact_summary_dir")
 pv_collection_isotime = Parameter("pv_collection_isotime")

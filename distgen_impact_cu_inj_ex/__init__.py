@@ -15,6 +15,13 @@ DEFAULT_VCC_ARRAY =resource_filename(
 )
 
 
+DISTGEN_INPUT_FILE = resource_filename(
+    "distgen_impact_cu_inj_ex.files.lcls_injector", "distgen.yaml"
+)
+
+IMPACT_ARCHIVE_FILE =  resource_filename(
+    "distgen_impact_cu_inj_ex.files.lcls_injector", "archive.h5"
+)
 
 
 CU_INJ_MAPPING = resource_filename(
