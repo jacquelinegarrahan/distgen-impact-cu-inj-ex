@@ -14,7 +14,7 @@ from pkg_resources import resource_filename
 import numpy as np
 from distgen import Generator
 from distgen_impact_cu_inj_ex import IMPACT_INPUT_VARIABLES, IMPACT_OUTPUT_VARIABLES, CU_INJ_MAPPING_TABLE, DISTGEN_INPUT_VARIABLES, DISTGEN_OUTPUT_VARIABLES
-from distgen_impact_cu_inj_ex.utils import format_distgen_xy_dist, isolate_image
+from distgen_impact_cu_inj_ex.utils import format_distgen_xy_dist, isolate_image, write_distgen_xy_dist
 from typing import Optional
 
 # Gets or creates a logger
@@ -38,7 +38,7 @@ class DistgenModel(SurrogateModel):
 
     def __init__(self, *, input_file, configuration, base_settings:dict=None, distgen_output_filename=None):
         self._input_file = input_file
-        self._G = Generator(input_file, **configuration.dict())
+        self._G = Generator(input_file, **configuration.dict(), verbose= True)
         self._settings = base_settings
         self._configuration = configuration
         self._distgen_output_filename = distgen_output_filename
@@ -64,13 +64,19 @@ class DistgenModel(SurrogateModel):
         assert cutimg.ptp() > 0
 
 
-        image_rep = format_distgen_xy_dist(cutimg,
-            input_variables["vcc_resolution"].value,
+       # image_rep = format_distgen_xy_dist(cutimg,
+       #     input_variables["vcc_resolution"].value,
+       #     resolution_units=input_variables["vcc_resolution_units"].value)
+
+        write_distgen_xy_dist(self._distgen_output_filename, cutimg, input_variables["vcc_resolution"].value,
             resolution_units=input_variables["vcc_resolution_units"].value)
 
-        self._G['xy_dist']= image_rep
+       # self._G['xy_dist'] = image_rep
+       # self._G.configure()
+       # dist = get_dist('xy', dist_params['xy'], verbose=verbose)
 
 
+        self._G['xy_dist:file']= self._distgen_output_filename
         self._G["total_charge:value"] = input_variables["total_charge"].value
 
         self._G.run()
@@ -132,6 +138,8 @@ class ImpactModel(SurrogateModel):
         for var in input_variables:
             self._I[var.name] = var.value
 
+
+
         logger.info(f"Running evaluate_impact_with_distgen...")
 
         t0 = time()
@@ -141,6 +149,10 @@ class ImpactModel(SurrogateModel):
         logger.info(f"Completed execution in {(time()-t0)/60:.1f} min...")
 
         outputs = default_impact_merit(self._I)
+
+        if outputs.get("error"):
+            print(self._I.output["run_info"])
+            raise ValueError("Error returned from merit.")
 
         # format output variables
         for var_name in outputs:
