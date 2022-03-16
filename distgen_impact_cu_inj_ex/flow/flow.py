@@ -263,9 +263,6 @@ docker_storage = Docker(
 with Flow(
     "distgen-impact-cu-inj",
     storage=docker_storage,
-    run_config=KubernetesRun(
-        image="jgarrahan/distgen-impact-cu-inj-ex", image_pull_policy="Always"
-    ),
 ) as flow:
 
 
@@ -300,5 +297,4 @@ docker_storage.add_flow(flow)
 
 def get_flow():
     return flow
-
 
