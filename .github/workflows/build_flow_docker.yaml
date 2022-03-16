@@ -3,8 +3,6 @@ name: Publish flow docker image
 on:
   release:
     types: [published]
-    branches:
-      - main
 
 jobs:
   push_to_registry:
