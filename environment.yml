@@ -13,3 +13,4 @@ dependencies:
   - pip:
     - git+https://github.com/jacquelinegarrahan/distgen-impact-cu-inj-ex.git
     - git+https://github.com/slaclab/lume-model
+    - git+https://github.com/jacquelinegarrahan/lume-orchestration-demo.git
