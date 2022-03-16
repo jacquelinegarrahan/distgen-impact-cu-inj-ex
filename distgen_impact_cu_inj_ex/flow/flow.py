@@ -39,6 +39,9 @@ pv_collection_isotime = Parameter("pv_collection_isotime")
 dashboard_dir = Parameter("dashboard_dir")
 
 
+PREFECT__CONTEXT__FLOW_ID = os.environ.get("PREFECT__CONTEXT__FLOW_ID", "local")
+
+
 
 @task
 def format_distgen_epics_input(distgen_pv_values, distgen_pvname_to_input_map):
@@ -150,7 +153,7 @@ def archive(distgen_output, impact_output, archive_dir, pv_collection_isotime):
     impact_model = impact_output[0]
  #   fingerprint = fingerprint_impact_with_distgen(impact_model.I, distgen_model.G)
 
-    archive_file = os.path.join(archive_dir, f"{os.environ('PREFECT__CONTEXT__FLOW_ID')}_{pv_collection_isotime}.h5")
+    archive_file = os.path.join(archive_dir, f"{PREFECT__CONTEXT__FLOW_ID}_{pv_collection_isotime}.h5")
 
     assert os.path.exists(archive_dir), f'archive dir does not exist: {archive_dir}'
 
@@ -168,10 +171,10 @@ def create_dashboard(pv_collection_isotime, dashboard_dir, impact_output):
                 'screen2': 'YAG03',
                 'screen3': 'OTR2',
                 'ylim' : (0, 2e-6), # Emittance scale                        
-                'name' : f"{os.environ('PREFECT__CONTEXT__FLOW_ID')}_{pv_collection_isotime}"
+                'name' : f"{PREFECT__CONTEXT__FLOW_ID}_{pv_collection_isotime}"
                 }
 
-    plot_file = make_dashboard(impact_output[0], itime=pv_collection_isotime, **DASHBOARD_KWARGS)
+    plot_file = make_dashboard(impact_output[0].I, itime=pv_collection_isotime, **DASHBOARD_KWARGS)
 
     return plot_file
 
@@ -180,7 +183,7 @@ def create_dashboard(pv_collection_isotime, dashboard_dir, impact_output):
 def store_results(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output, dashboard_file):
 
     impact_settings.update(
-        {var_name: var.value for var_name, var in impact_input_variables}
+        {var_name: var.value for var_name, var in impact_input_variables.items()}
     )
 
 
@@ -189,7 +192,7 @@ def store_results(pv_collection_isotime, impact_settings, impact_input_variables
 
 
     dat = {
-        "flow_id": os.environ("PREFECT__CONTEXT__FLOW_ID"),
+        "flow_id": PREFECT__CONTEXT__FLOW_ID,
         "isotime": pv_collection_isotime,
         "inputs": impact_settings, 
         "config": impact_configuration,
@@ -197,9 +200,6 @@ def store_results(pv_collection_isotime, impact_settings, impact_input_variables
         "plot_file": dashboard_file
     }
     return dat
-
-
-
 
 
 
@@ -268,6 +268,7 @@ with Flow(
     ),
 ) as flow:
 
+
     distgen_input_variables = format_distgen_epics_input(distgen_pv_values, distgen_pvname_to_input_map)
 
     distgen_output = run_distgen(
@@ -293,12 +294,6 @@ with Flow(
     dashboard_file = create_dashboard(pv_collection_isotime, dashboard_dir, impact_output)
     archive_file = archive(distgen_output, impact_output, archive_dir, pv_collection_isotime)
     store_results(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output, dashboard_file)
-
-
-
-
-
-  #  summary_file = summarize_impact(impact_settings, impact_configuration, impact_pv_values, impact_output, pv_collection_isotime, impact_model_name, summary_dir)
 
 
 docker_storage.add_flow(flow)
