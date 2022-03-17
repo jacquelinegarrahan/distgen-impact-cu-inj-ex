@@ -16,11 +16,11 @@ DEFAULT_VCC_ARRAY =resource_filename(
 
 
 DISTGEN_INPUT_FILE = resource_filename(
-    "distgen_impact_cu_inj_ex.files.lcls_injector", "distgen.yaml"
+    "distgen_impact_cu_inj_ex.files", "distgen.yaml"
 )
 
 IMPACT_ARCHIVE_FILE =  resource_filename(
-    "distgen_impact_cu_inj_ex.files.lcls_injector", "archive.h5"
+    "distgen_impact_cu_inj_ex.files", "archive.h5"
 )
 
 

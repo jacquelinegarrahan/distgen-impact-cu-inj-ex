@@ -149,7 +149,7 @@ def run_impact(
     return (model, output_variables)
 
 @task
-def archive(distgen_output, impact_output, archive_dir, pv_collection_isotime):
+def archive_impact(distgen_output, impact_output, archive_dir, pv_collection_isotime):
     # get fingerprint
     distgen_model = distgen_output[0]
     impact_model = impact_output[0]
@@ -206,51 +206,6 @@ def store_results(pv_collection_isotime, impact_settings, impact_input_variables
 
 
 
-
-        
-
-"""
-# save summary file
-@task
-def summarize_impact(impact_settings, impact_configuration, impact_pv_values, impact_output, pv_collection_isotime, impact_model_name, summary_dir):
-    skipping for now and saving to db instead
- 
-    df = CU_INJ_MAPPING_TABLE.copy()
-   # df["pv_value"] = 
-
-   # df["pv_value"] = [
-   #     input_variables[k].value for k in input_variables if "vcc_" not in k
-   # ]
-
-   # df["impact_value"] = [impact_output_variables[""]]
-    impact_output_variables = impact_output[1]
-
-    settings = {
-        var.name: var.value for var in impact_input_variables
-    }.update(impact_settings)
-
-    outputs = {}
-
-    for var in impact_output_variables:
-        outputs[var.name] =  var.value
-
-    dat = {
-        "isotime": pv_collection_isotime,
-        "inputs": settings, 
-        "config": impact_configuration,
-        # "pv_mapping_dataframe": df.to_dict(),
-        "outputs": outputs
-    }
-
-    fname = f"{summary_dir}/{impact_model_name}-{dat['isotime']}.json"
-
-    # fname = fname = f"{self._summary_dir}/{self._model_name}-{dat['isotime']}.json"
-    #json.dump(dat, open(fname, "w"))
-    #logger.info(f"Output written: {fname}")
-
-"""
-
-
 docker_storage = Docker(
     registry_url="jgarrahan",
     image_name="distgen-impact-cu-inj-ex",
@@ -292,7 +247,7 @@ with Flow(
 
 
     dashboard_file = create_dashboard(pv_collection_isotime, dashboard_dir, impact_output)
-    archive_file = archive(distgen_output, impact_output, archive_dir, pv_collection_isotime)
+    archive_file = archive_impact(distgen_output, impact_output, archive_dir, pv_collection_isotime)
     store_results(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output, dashboard_file, archive_file)
 
 
