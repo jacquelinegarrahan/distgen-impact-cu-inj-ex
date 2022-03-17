@@ -165,7 +165,7 @@ def make_dashboard(impact_object=None,
     ii.paste(im4, (im0.width,im3.height))
     ii.paste(im5, (im0.width,im4.height+im3.height))
     
-    fname = f'{name}-{itime}-dashboard.png'
+    fname = f'{name}-dashboard.png'
     fout = os.path.join(outpath, fname)
     
     # Enhance contrast
