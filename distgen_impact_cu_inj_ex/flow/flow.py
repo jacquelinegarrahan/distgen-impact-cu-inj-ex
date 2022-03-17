@@ -200,7 +200,7 @@ def store_results(pv_collection_isotime, impact_settings, impact_input_variables
         "config": impact_configuration,
         "outputs": impact_outputs,
         "plot_file": dashboard_file,
-        "archive_file": archive_file
+        "archive": archive_file
     }
     return dat
 
