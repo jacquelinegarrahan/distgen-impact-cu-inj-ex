@@ -182,7 +182,7 @@ def create_dashboard(pv_collection_isotime, dashboard_dir, impact_output):
 
 
 @task(result=MongoDBResult(model_type="impact", results_db=service_container.results_db()))
-def store_results(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output, dashboard_file):
+def store_results(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output, dashboard_file, archive_file):
 
     impact_settings.update(
         {var_name: var.value for var_name, var in impact_input_variables.items()}
@@ -199,7 +199,8 @@ def store_results(pv_collection_isotime, impact_settings, impact_input_variables
         "inputs": impact_settings, 
         "config": impact_configuration,
         "outputs": impact_outputs,
-        "plot_file": dashboard_file
+        "plot_file": dashboard_file,
+        "archive_file": archive_file
     }
     return dat
 
@@ -292,7 +293,7 @@ with Flow(
 
     dashboard_file = create_dashboard(pv_collection_isotime, dashboard_dir, impact_output)
     archive_file = archive(distgen_output, impact_output, archive_dir, pv_collection_isotime)
-    store_results(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output, dashboard_file)
+    store_results(pv_collection_isotime, impact_settings, impact_input_variables, impact_configuration, impact_output, dashboard_file, archive_file)
 
 
 docker_storage.add_flow(flow)
