@@ -2,7 +2,13 @@ FROM condaforge/mambaforge AS build
 
 # Create environment
 COPY ./environment.yml .
-RUN conda env create -f ./environment.yml
+
+
+ARG VERSION
+ENV version=$VERSION
+
+RUN conda env create -f ./environment.yml && \
+  conda run -n lcls_cu_inj_nn_ex_env python -m pip install https://github.com/jacquelinegarrahan/distgen-impact-cu-inj-ex/archive/refs/tags/${version}.tar.gz
 
 # Install conda-pack:
 RUN conda install -c conda-forge conda-pack
