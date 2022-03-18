@@ -29,3 +29,5 @@ jobs:
           context: ./distgen_impact_cu_inj_ex/flow
           push: true
           tags: jgarrahan/distgen-impact-cu-inj-ex:${{ github.ref_name }},jgarrahan/distgen-impact-cu-inj-ex:latest
+          build-args: |
+            VERSION=${{ github.ref_name }}
