@@ -23,7 +23,7 @@ setup(
     python_requires=">=3.7",
     entry_points = {
         "orchestration": [
-            "distgen_impact_cu_inj_ex.model=distgen_impact_cu_inj_ex.model:LCLSCuInjNN",
+            "distgen_impact_cu_inj_ex.model=distgen_impact_cu_inj_ex.model:ImpactModel",
             "distgen_impact_cu_inj_ex.flow=distgen_impact_cu_inj_ex.flow.flow:get_flow"
         ]
     }

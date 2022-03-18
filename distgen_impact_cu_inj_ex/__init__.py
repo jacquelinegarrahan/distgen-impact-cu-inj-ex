@@ -41,3 +41,5 @@ with open(DISTGEN_VARIABLE_FILE, "r") as f:
 
 
 DISTGEN_INPUT_VARIABLES["vcc_array"].default = DEFAULT_VCC_ARRAY
+from . import _version
+__version__ = _version.get_versions()['version']
