@@ -12,5 +12,4 @@ dependencies:
   - pandas
   - pip
   - pip:
-    - git+https://github.com/jacquelinegarrahan/distgen-impact-cu-inj-ex.git
     - git+https://github.com/jacquelinegarrahan/lume-orchestration-demo.git

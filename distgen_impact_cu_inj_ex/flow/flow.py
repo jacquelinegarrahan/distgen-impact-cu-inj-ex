@@ -3,6 +3,7 @@ from slac_services.services.scheduling import MongoDBResult
 from slac_services import service_container
 import numpy as np
 import os
+import versioneer
 from prefect import Flow, task, Parameter
 from prefect.storage import Docker
 from prefect.engine.results import LocalResult
@@ -204,7 +205,7 @@ def store_results(pv_collection_isotime, impact_settings, impact_input_variables
 docker_storage = Docker(
     registry_url="jgarrahan",
     image_name="distgen-impact-cu-inj-ex",
-    image_tag="latest",
+    image_tag=versioneer.get_version(),
     # path=os.path.dirname(__file__),
     build_kwargs={"nocache": True},
     dockerfile="Dockerfile",
@@ -216,6 +217,7 @@ docker_storage = Docker(
 with Flow(
     "distgen-impact-cu-inj",
     storage=docker_storage,
+    #result=MongoDB...
 ) as flow:
 
 
