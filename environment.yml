@@ -12,4 +12,4 @@ dependencies:
   - pandas
   - pip
   - pip:
-    - git+https://github.com/jacquelinegarrahan/lume-orchestration-demo.git
+    - git+https://github.com/jacquelinegarrahan/lume-orchestration-demo.git@v0.0
