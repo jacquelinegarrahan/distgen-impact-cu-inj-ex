@@ -51,8 +51,8 @@ def format_distgen_xy_dist(image, resolution, resolution_units):
 
     x_min = center_x - widths[1]/2
     x_max = center_x + widths[1]/2
-    y_min = center_y - widths[1]/2
-    y_max = center_y + widths[1]/2
+    y_min = center_y - widths[0]/2
+    y_max = center_y + widths[0]/2
     
     image = image * ureg(resolution_units)
 
