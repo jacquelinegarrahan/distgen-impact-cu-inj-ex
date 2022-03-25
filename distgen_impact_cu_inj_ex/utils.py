@@ -14,7 +14,7 @@ def write_distgen_xy_dist(filename, image, resolution, resolution_units='m'):
     Returns the absolute path to the file written
     
     """
-    
+    image = isolate_image(image)
     # Get width of each dimension
     widths = resolution * np.array(image.shape)
     
@@ -39,6 +39,7 @@ def format_distgen_xy_dist(image, resolution, resolution_units):
     Returns the absolute path to the file written
     
     """
+    image = isolate_image(image)
 
     ureg = pint.UnitRegistry()
     
@@ -54,14 +55,15 @@ def format_distgen_xy_dist(image, resolution, resolution_units):
     y_min = center_y - widths[0]/2
     y_max = center_y + widths[0]/2
     
+    image = np.flip(image, axis=0)
     image = image * ureg(resolution_units)
 
     return {
             'type' : 'image2d',
-            'min_x': {'value':x_min, 'units':'mm'},
-            'max_x': {'value':x_max, 'units':'mm'},
-            'min_y': {'value':y_min, 'units':'mm'},
-            'max_y': {'value':y_max, 'units':'mm'},
+            'min_x': {'value':x_min, 'units':resolution_units},
+            'max_x': {'value':x_max, 'units':resolution_units},
+            'min_y': {'value':y_min, 'units':resolution_units},
+            'max_y': {'value':y_max, 'units':resolution_units},
             'P': image
         }
 

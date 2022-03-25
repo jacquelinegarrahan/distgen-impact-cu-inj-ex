@@ -1,6 +1,5 @@
 from lume_model.models import SurrogateModel
 from impact import Impact
-from impact.tools import isotime
 from impact.evaluate import default_impact_merit
 
 # import matplotlib.pyplot as plt
@@ -10,12 +9,12 @@ import pandas as pd
 from pydantic import BaseSettings
 from time import time
 import logging
-from pkg_resources import resource_filename
 import numpy as np
 from distgen import Generator
 from distgen_impact_cu_inj_ex import IMPACT_INPUT_VARIABLES, IMPACT_OUTPUT_VARIABLES, CU_INJ_MAPPING_TABLE, DISTGEN_INPUT_VARIABLES, DISTGEN_OUTPUT_VARIABLES
 from distgen_impact_cu_inj_ex.utils import format_distgen_xy_dist, isolate_image, write_distgen_xy_dist
 from typing import Optional
+import yaml
 
 # Gets or creates a logger
 logger = logging.getLogger(__name__)
@@ -37,47 +36,38 @@ class DistgenModel(SurrogateModel):
     output_variables = DISTGEN_OUTPUT_VARIABLES
 
     def __init__(self, *, input_file, configuration, base_settings:dict=None, distgen_output_filename=None):
-        self._input_file = input_file
-        self._G = Generator(input_file, **configuration.dict(), verbose= True)
-        self._settings = base_settings
+        self._input_yaml = input_file
+        self._base_settings = base_settings
         self._configuration = configuration
         self._distgen_output_filename = distgen_output_filename
 
-        if base_settings is not None:
-            for setting, val in base_settings.items():
+    def evaluate(self, input_variables, settings:dict=None):
+
+        with open(self._input_yaml, "r") as f:
+            distgen_input_yaml = yaml.safe_load(f)
+
+        image = input_variables["vcc_array"].value.reshape(input_variables["vcc_size_y"].value, input_variables["vcc_size_x"].value)
+
+        image_rep = format_distgen_xy_dist(image,
+            input_variables["vcc_resolution"].value,
+            resolution_units=input_variables["vcc_resolution_units"].value
+        )
+
+        distgen_input_yaml['xy_dist'] = image_rep
+
+        self._G = Generator(distgen_input_yaml, **self._configuration.dict(), verbose= True)
+
+        self._G["total_charge:value"] = input_variables["total_charge"].value
+
+        if self._base_settings is not None:
+            for setting, val in self._base_settings.items():
                 self._G[setting] = val
 
-
-    def evaluate(self, input_variables, settings:dict=None):
 
         # Assign updated settings
         if settings is not None:
             for key, val in settings.items():
-                val = settings[key]
                 self._G[key] = val
-
-
-        image = input_variables["vcc_array"].value.reshape(input_variables["vcc_size_y"].value, input_variables["vcc_size_x"].value)
-        
-
-        cutimg = isolate_image(image, fclip=0.08)
-        assert cutimg.ptp() > 0
-
-
-       # image_rep = format_distgen_xy_dist(cutimg,
-       #     input_variables["vcc_resolution"].value,
-       #     resolution_units=input_variables["vcc_resolution_units"].value)
-
-        write_distgen_xy_dist(self._distgen_output_filename, cutimg, input_variables["vcc_resolution"].value,
-            resolution_units=input_variables["vcc_resolution_units"].value)
-
-       # self._G['xy_dist'] = image_rep
-       # self._G.configure()
-       # dist = get_dist('xy', dist_params['xy'], verbose=verbose)
-
-
-        self._G['xy_dist:file']= self._distgen_output_filename
-        self._G["total_charge:value"] = input_variables["total_charge"].value
 
         self._G.run()
 
@@ -115,30 +105,27 @@ class ImpactModel(SurrogateModel):
         self._configuration = configuration.dict()
         self._settings = base_settings
 
-        self._I = Impact(**self._configuration, verbose=False)
+        self._I = Impact(**self._configuration, verbose=True)
         self._I.load_archive(archive_file)
 
         # Assign basic settings
         if base_settings is not None:
             for key, val in self._settings.items():
-                val = self._settings[key]
                 self._I[key] = val
 
 
     def evaluate(self, input_variables, particles, settings:dict=None):
-        self._I.initial_particles = particles
 
         # Assign updated settings
         if settings is not None:
             for key, val in settings.items():
-                val = settings[key]
-                self._I[key] = val
+                self._I[key] = settings[key]
 
         # Assign input variable values
         for var in input_variables:
             self._I[var.name] = var.value
 
-
+        self._I.initial_particles = particles
 
         logger.info(f"Running evaluate_impact_with_distgen...")
 
@@ -151,8 +138,7 @@ class ImpactModel(SurrogateModel):
         outputs = default_impact_merit(self._I)
 
         if outputs.get("error"):
-            print(self._I.output["run_info"])
-            raise ValueError("Error returned from merit.")
+            raise ValueError("Error returned from run.")
 
         # format output variables
         for var_name in outputs:
